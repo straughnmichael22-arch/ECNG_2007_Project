@@ -1,0 +1,48 @@
+{
+  "manifestVersion": "1.0",
+  "tools": [
+    {
+      "name": "Visual Studio Code",
+      "type": "vscode",
+      "executable": "Code.exe",
+      "minimumApprovedVersion": "1.0.0",
+      "expectedPaths": [
+        "%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe",
+        "%ProgramFiles%\\Microsoft VS Code\\Code.exe",
+        "%ProgramFiles(x86)%\\Microsoft VS Code\\Code.exe",
+        "%USERPROFILE%\\tools\\Microsoft VS Code\\Code.exe",
+        "%USERPROFILE%\\tools\\VSCode\\Code.exe",
+        "%USERPROFILE%\\VSCode\\Code.exe",
+        "D:\\VSCode\\Code.exe"
+      ],
+      "searchRoots": [],
+      "relativeExecutablePath": "",
+      "versionArguments": ""
+    },
+    {
+      "name": "Vivado",
+      "type": "vivado",
+      "executable": "vivado.bat",
+      "minimumApprovedVersion": "2019.2",
+      "expectedPaths": [
+        "C:\\Xilinx\\Vivado\\*\\bin\\vivado.bat",
+        "C:\\AMD\\Vivado\\*\\bin\\vivado.bat",
+        "C:\\AMDDesignTools\\*\\Vivado\\bin\\vivado.bat"
+      ],
+      "searchRoots": [],
+      "relativeExecutablePath": "",
+      "versionArguments": "-version"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "Modern VHDL Support",
+      "type": "vscode-extension",
+      "editor": "Visual Studio Code",
+      "extensionId": "rjyoung.vscode-modern-vhdl-support",
+      "checkEnabled": true
+    }
+  ]
+}
+
+
