@@ -16,6 +16,8 @@ namespace EDAEnvironmentAudit
         private FlowLayoutPanel resultsPanel = null!;
         private Button runAuditButton = null!;
         private Label statusLabel = null!;
+        private Label overallStatusLabel = null!;
+
         private EdaManifest? manifest;
 
         public AuditWindow()
@@ -78,22 +80,34 @@ namespace EDAEnvironmentAudit
                 ForeColor = Color.DimGray
             };
 
+            overallStatusLabel = new Label
+            {
+                Text = "Overall Environment: Not Audited",
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(30, 165),
+                ForeColor = Color.DimGray
+            };
+
             resultsPanel = new FlowLayoutPanel
             {
-                Location = new Point(30, 175),
-                Size = new Size(970, 450),
+                Location = new Point(30, 205),
+                Size = new Size(970, 420),
                 AutoScroll = true,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
                 BackColor = Color.Transparent,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom |
-                         AnchorStyles.Left | AnchorStyles.Right
+                Anchor = AnchorStyles.Top |
+                         AnchorStyles.Bottom |
+                         AnchorStyles.Left |
+                         AnchorStyles.Right
             };
 
             Controls.Add(title);
             Controls.Add(description);
             Controls.Add(runAuditButton);
             Controls.Add(statusLabel);
+            Controls.Add(overallStatusLabel);
             Controls.Add(resultsPanel);
         }
 
@@ -112,7 +126,7 @@ namespace EDAEnvironmentAudit
 
                 if (!File.Exists(manifestPath))
                 {
-                    statusLabel.Text = "Manifest file not found.";
+                    statusLabel.Text = "Manifest Not Found.";
                     manifest = null;
                     return;
                 }
@@ -136,7 +150,7 @@ namespace EDAEnvironmentAudit
                 manifest.Tools ??= new List<EdaTool>();
                 manifest.Extensions ??= new List<EdaExtension>();
 
-                statusLabel.Text = "Manifest loaded. Ready to audit.";
+                statusLabel.Text = "Manifest Found. Ready to audit.";
             }
             catch (Exception ex)
             {
@@ -162,17 +176,49 @@ namespace EDAEnvironmentAudit
             resultsPanel.Controls.Clear();
 
             int totalComponents = 0;
+            bool allReady = true;
+
+            // Audit tools.
 
             foreach (EdaTool tool in manifest.Tools)
             {
-                AddToolResult(tool);
+                bool toolReady = AddToolResult(tool);
+
+                if (!toolReady)
+                    allReady = false;
+
                 totalComponents++;
             }
 
+            // Audit extensions.
+
             foreach (EdaExtension extension in manifest.Extensions)
             {
-                AddExtensionResult(extension);
+                bool extensionReady = AddExtensionResult(extension);
+
+                if (!extensionReady)
+                    allReady = false;
+
                 totalComponents++;
+            }
+
+            // Overall environment readiness.
+
+            if (allReady)
+            {
+                overallStatusLabel.Text =
+                    "Overall Environment: Ready";
+
+                overallStatusLabel.ForeColor =
+                    Color.ForestGreen;
+            }
+            else
+            {
+                overallStatusLabel.Text =
+                    "Overall Environment: Not Ready";
+
+                overallStatusLabel.ForeColor =
+                    Color.Firebrick;
             }
 
             statusLabel.Text =
@@ -212,43 +258,51 @@ namespace EDAEnvironmentAudit
             return null;
         }
 
-        private void AddToolResult(EdaTool tool)
+        private bool AddToolResult(EdaTool tool)
         {
             string? installedPath = FindExecutable(tool);
 
-            string version = "Unknown";
-            string result;
+            string installationStatus;
+            string readinessStatus;
+            string version = "Not Available";
 
             if (installedPath == null)
             {
-                result = "Not detected";
+                installationStatus = "Not Detected";
+                readinessStatus = "Not Ready";
             }
             else
             {
+                installationStatus = "Detected";
+
                 version = GetToolVersion(tool, installedPath);
 
                 if (version == "Unknown")
                 {
-                    result = "Installed - Version unavailable";
+                    version = "Not Available";
+                    readinessStatus = "Not Ready";
                 }
                 else if (IsVersionApproved(
                     version,
                     tool.MinimumApprovedVersion))
                 {
-                    result = "Installed - Approved";
+                    readinessStatus = "Ready";
                 }
                 else
                 {
-                    result = "Installed - Update required";
+                    readinessStatus = "Not Ready";
                 }
             }
 
             CreateResultCard(
                 tool.Name,
-                result,
+                installationStatus,
+                readinessStatus,
                 version,
                 installedPath
             );
+
+            return readinessStatus == "Ready";
         }
 
         // --------------------------------------------------
@@ -260,6 +314,7 @@ namespace EDAEnvironmentAudit
             try
             {
                 // VS Code: Read Windows file version.
+
                 if (string.Equals(
                     tool.Type,
                     "vscode",
@@ -274,6 +329,7 @@ namespace EDAEnvironmentAudit
                 }
 
                 // Vivado: Execute its version command.
+
                 if (string.Equals(
                     tool.Type,
                     "vivado",
@@ -295,6 +351,7 @@ namespace EDAEnvironmentAudit
                 }
 
                 // Other tools: Read Windows file version.
+
                 FileVersionInfo fileInfo =
                     FileVersionInfo.GetVersionInfo(path);
 
@@ -354,6 +411,10 @@ namespace EDAEnvironmentAudit
             }
         }
 
+        // --------------------------------------------------
+        // VERSION APPROVAL
+        // --------------------------------------------------
+
         private bool IsVersionApproved(
             string installedVersion,
             string minimumVersion)
@@ -361,10 +422,14 @@ namespace EDAEnvironmentAudit
             if (string.IsNullOrWhiteSpace(minimumVersion))
                 return true;
 
-            if (!Version.TryParse(installedVersion, out Version? installed))
+            if (!Version.TryParse(
+                installedVersion,
+                out Version? installed))
                 return false;
 
-            if (!Version.TryParse(minimumVersion, out Version? minimum))
+            if (!Version.TryParse(
+                minimumVersion,
+                out Version? minimum))
                 return false;
 
             return installed.CompareTo(minimum) >= 0;
@@ -375,68 +440,96 @@ namespace EDAEnvironmentAudit
         // NO VS CODE PROCESS IS LAUNCHED
         // --------------------------------------------------
 
-        private void AddExtensionResult(EdaExtension extension)
+        private bool AddExtensionResult(EdaExtension extension)
         {
-            string result = "Not checked";
-            string version = "N/A";
+            string installationStatus = "Not Checked";
+            string readinessStatus = "Not Checked";
+            string version = "Not Available";
             string? installedPath = null;
 
-            if (extension.CheckEnabled)
+            // Disabled extensions are excluded from
+            // the overall environment readiness calculation.
+
+            if (!extension.CheckEnabled)
             {
-                EdaTool? editor = manifest?.Tools.FirstOrDefault(
-                    t => string.Equals(
-                        t.Name,
-                        extension.Editor,
-                        StringComparison.OrdinalIgnoreCase)
+                CreateResultCard(
+                    extension.Name,
+                    installationStatus,
+                    readinessStatus,
+                    version,
+                    installedPath
                 );
 
-                if (editor == null)
+                return true;
+            }
+
+            EdaTool? editor = manifest?.Tools.FirstOrDefault(
+                t => string.Equals(
+                    t.Name,
+                    extension.Editor,
+                    StringComparison.OrdinalIgnoreCase)
+            );
+
+            if (editor == null)
+            {
+                installationStatus = "Not Detected";
+                readinessStatus = "Not Ready";
+            }
+            else if (FindExecutable(editor) == null)
+            {
+                installationStatus = "Not Detected";
+                readinessStatus = "Not Ready";
+            }
+            else
+            {
+                string extensionsPath = Path.Combine(
+                    Environment.GetFolderPath(
+                        Environment.SpecialFolder.UserProfile),
+                    ".vscode",
+                    "extensions"
+                );
+
+                if (!Directory.Exists(extensionsPath))
                 {
-                    result = "Editor not listed in manifest";
-                }
-                else if (FindExecutable(editor) == null)
-                {
-                    result = "Editor not detected";
+                    installationStatus = "Not Detected";
+                    readinessStatus = "Not Ready";
                 }
                 else
                 {
-                    string extensionsPath = Path.Combine(
-                        Environment.GetFolderPath(
-                            Environment.SpecialFolder.UserProfile),
-                        ".vscode",
-                        "extensions"
+                    bool found = TryFindInstalledExtension(
+                        extensionsPath,
+                        extension.ExtensionId,
+                        out version,
+                        out installedPath
                     );
 
-                    if (!Directory.Exists(extensionsPath))
+                    if (found)
                     {
-                        result = "Extensions folder not found";
+                        installationStatus = "Detected";
+                        readinessStatus = "Ready";
                     }
                     else
                     {
-                        bool found = TryFindInstalledExtension(
-                            extensionsPath,
-                            extension.ExtensionId,
-                            out version,
-                            out installedPath
-                        );
-
-                        result = found
-                            ? "Installed"
-                            : "Not installed";
+                        installationStatus = "Not Detected";
+                        readinessStatus = "Not Ready";
                     }
                 }
             }
 
             CreateResultCard(
                 extension.Name,
-                result,
+                installationStatus,
+                readinessStatus,
                 version,
                 installedPath
             );
+
+            return readinessStatus == "Ready";
         }
 
-        // Searches the VS Code extensions directory
-        // and reads each extension's package.json.
+        // --------------------------------------------------
+        // SEARCH EXTENSION PACKAGE.JSON
+        // --------------------------------------------------
 
         private bool TryFindInstalledExtension(
             string extensionsPath,
@@ -444,7 +537,7 @@ namespace EDAEnvironmentAudit
             out string version,
             out string? installedPath)
         {
-            version = "N/A";
+            version = "Not Available";
             installedPath = null;
 
             try
@@ -503,7 +596,7 @@ namespace EDAEnvironmentAudit
                             out JsonElement versionElement))
                         {
                             version =
-                                versionElement.GetString() ?? "Unknown";
+                                versionElement.GetString() ?? "Not Available";
                         }
 
                         return true;
@@ -524,7 +617,7 @@ namespace EDAEnvironmentAudit
             }
             catch
             {
-                // Handle an inaccessible extensions directory.
+                // Handle inaccessible extensions directory.
             }
 
             return false;
@@ -536,13 +629,14 @@ namespace EDAEnvironmentAudit
 
         private void CreateResultCard(
             string name,
-            string result,
+            string installationStatus,
+            string readinessStatus,
             string version,
             string? path)
         {
             Panel card = new Panel
             {
-                Size = new Size(925, 125),
+                Size = new Size(925, 145),
                 BackColor = Color.White,
                 Margin = new Padding(0, 0, 0, 12),
                 BorderStyle = BorderStyle.FixedSingle
@@ -552,53 +646,55 @@ namespace EDAEnvironmentAudit
             {
                 Text = name,
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                Location = new Point(15, 12),
+                Location = new Point(15, 10),
                 AutoSize = true
             };
 
-            Label resultLabel = new Label
+            Label installationLabel = new Label
             {
-                Text = "Status: " + result,
-                Font = new Font("Segoe UI", 10),
-                Location = new Point(15, 43),
+                Text = "Installation Status: " + installationStatus,
+                Font = new Font("Segoe UI", 9),
+                Location = new Point(15, 38),
                 AutoSize = true,
-                ForeColor = GetStatusColor(result)
+                ForeColor = GetStatusColor(installationStatus)
+            };
+
+            Label readinessLabel = new Label
+            {
+                Text = "Readiness Status: " + readinessStatus,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Location = new Point(15, 60),
+                AutoSize = true,
+                ForeColor = GetStatusColor(readinessStatus)
             };
 
             Label versionLabel = new Label
             {
                 Text = "Version: " + version,
                 Font = new Font("Segoe UI", 9),
-                Location = new Point(15, 70),
+                Location = new Point(15, 83),
                 AutoSize = true,
                 ForeColor = Color.DimGray
             };
 
             Label pathLabel = new Label
             {
-                Text = "Location: " + (path ?? "Not detected"),
+                Text = "Location: " + (path ?? "Not Available"),
                 Font = new Font("Segoe UI", 8),
-                Location = new Point(15, 94),
+                Location = new Point(15, 106),
                 AutoSize = true,
-                MaximumSize = new Size(570, 0),
+                MaximumSize = new Size(650, 0),
                 ForeColor = Color.Gray
             };
 
-            bool showSmokeTest =
-                result == "Installed - Approved" ||
-                result == "Installed";
+            bool showSmokeTest = readinessStatus == "Ready";
 
-            bool showRemediation =
-                result == "Not detected" ||
-                result == "Not installed" ||
-                result == "Installed - Update required" ||
-                result == "Editor not detected" ||
-                result == "Extensions folder not found";
+            bool showRemediation = readinessStatus == "Not Ready";
 
             Button actionButton = new Button
             {
                 Text = showSmokeTest ? "Smoke Test" : "Remediate",
-                Location = new Point(730, 45),
+                Location = new Point(730, 48),
                 Size = new Size(160, 40),
                 BackColor = showSmokeTest
                     ? Color.FromArgb(35, 140, 90)
@@ -621,7 +717,8 @@ namespace EDAEnvironmentAudit
             };
 
             card.Controls.Add(nameLabel);
-            card.Controls.Add(resultLabel);
+            card.Controls.Add(installationLabel);
+            card.Controls.Add(readinessLabel);
             card.Controls.Add(versionLabel);
             card.Controls.Add(pathLabel);
             card.Controls.Add(actionButton);
@@ -633,23 +730,19 @@ namespace EDAEnvironmentAudit
         // STATUS COLOURS
         // --------------------------------------------------
 
-        private Color GetStatusColor(string result)
+        private Color GetStatusColor(string status)
         {
-            if (result.Contains("Approved") ||
-                result == "Installed")
+            if (status == "Ready" ||
+                status == "Detected")
             {
                 return Color.ForestGreen;
             }
 
-            if (result.Contains("Not detected") ||
-                result.Contains("Not installed") ||
-                result.Contains("not found"))
+            if (status == "Not Ready" ||
+                status == "Not Detected")
             {
                 return Color.Firebrick;
             }
-
-            if (result.Contains("Update"))
-                return Color.DarkOrange;
 
             return Color.DimGray;
         }
