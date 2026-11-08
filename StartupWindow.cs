@@ -34,7 +34,8 @@ namespace EDAEnvironmentAudit
             descriptionLabel = new Label();
             descriptionLabel.Text =
                   "Welcome to Course Tool Audit.\n" +
-    "Click Run Audit to check for Vivado, VHDL extension, and Visual Studio Code.";
+    "Click Run Audit to check for Vivado, VHDL extension, Visual Studio Code,\n" + 
+    "GHDL and Surfer";
 
             descriptionLabel.Font = new Font("Segoe UI", 11);
             descriptionLabel.ForeColor = Color.FromArgb(90, 100, 115);

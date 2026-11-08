@@ -1,11 +1,14 @@
+
 {
   "manifestVersion": "1.0",
   "tools": [
     {
       "name": "Visual Studio Code",
       "type": "vscode",
+      "whereCommand": "code",
       "executable": "Code.exe",
-      "minimumApprovedVersion": "1.0.0",
+      "minimumApprovedVersion": "1.100.0",
+      "maximumApprovedVersion": "1.145.2",
       "expectedPaths": [
         "%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe",
         "%ProgramFiles%\\Microsoft VS Code\\Code.exe",
@@ -13,17 +16,19 @@
         "%USERPROFILE%\\tools\\Microsoft VS Code\\Code.exe",
         "%USERPROFILE%\\tools\\VSCode\\Code.exe",
         "%USERPROFILE%\\VSCode\\Code.exe",
-        "D:\\VSCode\\Code.exe"
+        "D:\\vscode\\Code.exe"
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": ""
+      "versionArguments": "--version"
     },
     {
       "name": "Vivado",
       "type": "vivado",
+      "whereCommand": "vivado",
       "executable": "vivado.bat",
       "minimumApprovedVersion": "2019.2",
+      "maximumApprovedVersion": "2026.1.1",
       "expectedPaths": [
         "C:\\Xilinx\\Vivado\\*\\bin\\vivado.bat",
         "C:\\AMD\\Vivado\\*\\bin\\vivado.bat",
@@ -32,17 +37,58 @@
       "searchRoots": [],
       "relativeExecutablePath": "",
       "versionArguments": "-version"
+    },
+    {
+      "name": "GHDL",
+      "type": "ghdl",
+      "whereCommand": "ghdl",
+      "executable": "ghdl.exe",
+      "minimumApprovedVersion": "5.0.1",
+      "maximumApprovedVersion": "6.0.0",
+      "expectedPaths": [
+        "%USERPROFILE%\\Downloads\\ghdl-*\\bin\\ghdl.exe",
+        "%USERPROFILE%\\Downloads\\bin\\ghdl.exe",
+        "%USERPROFILE%\\Desktop\\ghdl-*\\bin\\ghdl.exe",
+        "%USERPROFILE%\\Desktop\\bin\\ghdl.exe",
+        "%USERPROFILE%\\Documents\\ghdl-*\\bin\\ghdl.exe",
+        "%USERPROFILE%\\Documents\\bin\\ghdl.exe"
+      ],
+      "searchRoots": [],
+      "relativeExecutablePath": "",
+      "versionArguments": "--version"
+    },
+    {
+      "name": "Surfer",
+      "type": "surfer",
+      "whereCommand": "surfer",
+      "executable": "surfer.exe",
+      "minimumApprovedVersion": "",
+      "maximumApprovedVersion": "",
+      "expectedPaths": [
+        "%USERPROFILE%\\Downloads\\surfer_win\\surfer.exe",
+        "%USERPROFILE%\\Downloads\\surfer.exe",
+        "%USERPROFILE%\\Desktop\\surfer_win\\surfer.exe",
+        "%USERPROFILE%\\Desktop\\surfer.exe",
+        "%USERPROFILE%\\Documents\\surfer_win\\surfer.exe",
+        "%USERPROFILE%\\Documents\\surfer.exe"
+      ],
+      "searchRoots": [],
+      "relativeExecutablePath": "",
+      "versionArguments": "--version"
     }
   ],
   "extensions": [
     {
-      "name": "Modern VHDL Support",
+      "name": "Approved VHDL Extensions",
       "type": "vscode-extension",
       "editor": "Visual Studio Code",
-      "extensionId": "rjyoung.vscode-modern-vhdl-support",
+      "approvedExtensions": [
+        "teros-technology.teroshdl",
+        "p2l2.vhdl-by-hgb",
+        "rjyoung.vscode-modern-vhdl-support",
+        "vhdlwhiz.vhdl-by-vhdlwhiz"
+      ],
       "checkEnabled": true
     }
   ]
 }
-
-

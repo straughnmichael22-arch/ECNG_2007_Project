@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace EDAEnvironmentAudit
@@ -229,80 +230,348 @@ namespace EDAEnvironmentAudit
         // TOOL DETECTION
         // --------------------------------------------------
 
+        private List<string> FindExecutables(EdaTool tool)
+        {
+            List<string> foundPaths = new List<string>();
+
+            // The manifest supplies the command used by where.exe.
+            // Fall back to the executable name for older manifests.
+            string whereCommand = !string.IsNullOrWhiteSpace(tool.WhereCommand)
+                ? tool.WhereCommand
+                : tool.Executable;
+
+            if (!string.IsNullOrWhiteSpace(whereCommand))
+            {
+                foreach (string commandPath in FindUsingWhere(whereCommand))
+                {
+                    foundPaths.AddRange(ResolveWhereResult(commandPath, tool));
+                }
+            }
+
+            // Also search the manifest paths. This allows the audit to find
+            // an approved installation even if PATH has an older copy first.
+            foundPaths.AddRange(FindUsingManifest(tool));
+
+            return foundPaths
+                .Where(File.Exists)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private List<string> ResolveWhereResult(string commandPath, EdaTool tool)
+        {
+            List<string> paths = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(commandPath) ||
+                string.IsNullOrWhiteSpace(tool.Executable))
+            {
+                return paths;
+            }
+
+            // If where.exe returned the actual executable, use it directly.
+            if (string.Equals(
+                Path.GetFileName(commandPath),
+                tool.Executable,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(commandPath))
+                    paths.Add(commandPath);
+
+                return paths;
+            }
+
+            string? commandDirectory = Path.GetDirectoryName(commandPath);
+            if (string.IsNullOrWhiteSpace(commandDirectory))
+                return paths;
+
+            // Some tools expose a command shim in a child "bin" folder
+            // while the actual executable is in the installation directory
+            // above it (for example, VS Code's code.cmd -> Code.exe).
+            DirectoryInfo? containingDirectory = new DirectoryInfo(commandDirectory);
+            DirectoryInfo? installDirectory =
+                string.Equals(
+                    containingDirectory.Name,
+                    "bin",
+                    StringComparison.OrdinalIgnoreCase)
+                    ? containingDirectory.Parent
+                    : containingDirectory;
+
+            if (installDirectory == null)
+                return paths;
+
+            string resolvedExecutable = Path.Combine(
+                installDirectory.FullName,
+                tool.Executable);
+
+            if (File.Exists(resolvedExecutable))
+                paths.Add(resolvedExecutable);
+
+            return paths;
+        }
+
         private string? FindExecutable(EdaTool tool)
+        {
+            return FindExecutables(tool).FirstOrDefault();
+        }
+
+        private List<string> FindUsingWhere(string executable)
+        {
+            List<string> paths = new List<string>();
+
+            try
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = "where.exe",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                startInfo.ArgumentList.Add(executable);
+
+                using Process? process = Process.Start(startInfo);
+                if (process == null)
+                    return paths;
+
+                Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+                Task<string> errorTask = process.StandardError.ReadToEndAsync();
+
+                if (!process.WaitForExit(5000))
+                {
+                    process.Kill(true);
+                    return paths;
+                }
+
+                string output = outputTask.GetAwaiter().GetResult();
+                _ = errorTask.GetAwaiter().GetResult();
+
+                foreach (string line in output.Split(
+                    new[] { '\r', '\n' },
+                    StringSplitOptions.RemoveEmptyEntries))
+                {
+                    string candidate = line.Trim();
+                    if (File.Exists(candidate))
+                        paths.Add(candidate);
+                }
+            }
+            catch
+            {
+                // If where.exe cannot run, manifest discovery is the fallback.
+            }
+
+            return paths;
+        }
+
+        private List<string> FindUsingManifest(EdaTool tool)
         {
             List<string> paths = new List<string>();
 
             if (tool.CommonPaths != null)
-                paths.AddRange(tool.CommonPaths);
+            {
+                foreach (string path in tool.CommonPaths)
+                    paths.AddRange(ExpandManifestPath(path));
+            }
 
             if (tool.ExpectedPaths != null)
-                paths.AddRange(tool.ExpectedPaths);
-
-            foreach (string path in paths.Distinct())
             {
-                try
-                {
-                    string expandedPath =
-                        Environment.ExpandEnvironmentVariables(path);
+                foreach (string path in tool.ExpectedPaths)
+                    paths.AddRange(ExpandManifestPath(path));
+            }
 
-                    if (File.Exists(expandedPath))
-                        return expandedPath;
-                }
-                catch
+            if (tool.SearchRoots != null)
+            {
+                foreach (string rootPath in tool.SearchRoots)
                 {
-                    // Skip invalid paths.
+                    try
+                    {
+                        string root = Environment.ExpandEnvironmentVariables(rootPath);
+                        if (!Directory.Exists(root))
+                            continue;
+
+                        string relativePath = tool.RelativeExecutablePath ?? "";
+
+                        if (string.IsNullOrWhiteSpace(tool.FolderPattern))
+                        {
+                            string directPath = Path.Combine(root, relativePath);
+                            if (File.Exists(directPath))
+                                paths.Add(directPath);
+                            continue;
+                        }
+
+                        foreach (string folder in Directory.EnumerateDirectories(
+                            root, tool.FolderPattern))
+                        {
+                            string candidate = Path.Combine(folder, relativePath);
+                            if (File.Exists(candidate))
+                                paths.Add(candidate);
+                        }
+                    }
+                    catch
+                    {
+                        // Skip inaccessible or invalid search roots.
+                    }
                 }
             }
 
-            return null;
+            return paths;
+        }
+
+        private List<string> ExpandManifestPath(string manifestPath)
+        {
+            List<string> results = new List<string>();
+
+            try
+            {
+                string expanded = Environment.ExpandEnvironmentVariables(manifestPath);
+
+                if (!expanded.Contains('*') && !expanded.Contains('?'))
+                {
+                    if (File.Exists(expanded))
+                        results.Add(expanded);
+                    return results;
+                }
+
+                string? root = Path.GetPathRoot(expanded);
+                if (string.IsNullOrWhiteSpace(root))
+                    return results;
+
+                string remainder = expanded.Substring(root.Length);
+                string[] segments = remainder.Split(
+                    new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+                    StringSplitOptions.RemoveEmptyEntries);
+
+                List<string> currentPaths = new List<string> { root };
+
+                for (int i = 0; i < segments.Length; i++)
+                {
+                    bool finalSegment = i == segments.Length - 1;
+                    List<string> nextPaths = new List<string>();
+
+                    foreach (string current in currentPaths)
+                    {
+                        if (!Directory.Exists(current))
+                            continue;
+
+                        try
+                        {
+                            IEnumerable<string> matches = finalSegment
+                                ? Directory.EnumerateFiles(current, segments[i])
+                                : Directory.EnumerateDirectories(current, segments[i]);
+
+                            nextPaths.AddRange(matches);
+                        }
+                        catch
+                        {
+                            // Skip inaccessible folders and continue with other matches.
+                        }
+                    }
+
+                    currentPaths = nextPaths;
+                    if (currentPaths.Count == 0)
+                        break;
+                }
+
+                results.AddRange(currentPaths.Where(File.Exists));
+            }
+            catch
+            {
+                // Ignore malformed manifest paths.
+            }
+
+            return results;
         }
 
         private bool AddToolResult(EdaTool tool)
         {
-            string? installedPath = FindExecutable(tool);
-
-            string installationStatus;
-            string readinessStatus;
+            List<string> candidates = FindExecutables(tool);
+            string? installedPath = null;
             string version = "Not Available";
+            bool ready = false;
+
+            // Version checking is only required when the manifest specifies
+            // at least one approved version limit. With no limits, detection
+            // alone is enough to mark the tool Ready (for example, Surfer).
+            bool checkVersion =
+                !string.IsNullOrWhiteSpace(tool.MinimumApprovedVersion) ||
+                !string.IsNullOrWhiteSpace(tool.MaximumApprovedVersion);
+
+            // Check every discovered location. A stale PATH entry should not
+            // hide another installation that meets the approved version range.
+            foreach (string candidate in candidates)
+            {
+                // Detection-only tools do not launch a version command or
+                // inspect executable version metadata.
+                if (!checkVersion)
+                {
+                    installedPath = candidate;
+                    version = "Not Checked";
+                    ready = true;
+                    break;
+                }
+
+                string candidateVersion = GetToolVersion(tool, candidate);
+
+                if (candidateVersion != "Unknown" &&
+                    IsVersionApproved(
+                        candidateVersion,
+                        tool.MinimumApprovedVersion,
+                        tool.MaximumApprovedVersion))
+                {
+                    installedPath = candidate;
+                    version = candidateVersion;
+                    ready = true;
+                    break;
+                }
+
+                // Keep the first discovered installation for useful diagnostics.
+                if (installedPath == null)
+                {
+                    installedPath = candidate;
+                    version = candidateVersion;
+                }
+            }
+
+            string installationStatus = installedPath == null
+                ? "Not Installed"
+                : "Detected";
+
+            string readinessStatus = ready ? "Ready" : "Not Ready";
+            string displayedVersion = version == "Unknown" ? "Not Available" : version;
+            string reason;
 
             if (installedPath == null)
             {
-                installationStatus = "Not Detected";
-                readinessStatus = "Not Ready";
+                reason = "Executable was not found in PATH or the manifest search locations.";
+            }
+            else if (!checkVersion)
+            {
+                reason = "";
+            }
+            else if (version == "Unknown")
+            {
+                reason = "The executable was found, but its version could not be retrieved.";
             }
             else
             {
-                installationStatus = "Detected";
-
-                version = GetToolVersion(tool, installedPath);
-
-                if (version == "Unknown")
-                {
-                    version = "Not Available";
-                    readinessStatus = "Not Ready";
-                }
-                else if (IsVersionApproved(
+                reason = GetVersionApprovalReason(
                     version,
-                    tool.MinimumApprovedVersion))
-                {
-                    readinessStatus = "Ready";
-                }
-                else
-                {
-                    readinessStatus = "Not Ready";
-                }
+                    tool.MinimumApprovedVersion,
+                    tool.MaximumApprovedVersion
+                );
             }
 
             CreateResultCard(
                 tool.Name,
                 installationStatus,
                 readinessStatus,
-                version,
-                installedPath
+                displayedVersion,
+                installedPath,
+                reason
             );
 
-            return readinessStatus == "Ready";
+            return ready;
         }
 
         // --------------------------------------------------
@@ -313,86 +582,132 @@ namespace EDAEnvironmentAudit
         {
             try
             {
-                // VS Code: Read Windows file version.
-
+                // VS Code: read the version from the executable metadata.
+                // This avoids launching the VS Code editor during the audit.
                 if (string.Equals(
                     tool.Type,
                     "vscode",
                     StringComparison.OrdinalIgnoreCase))
                 {
-                    FileVersionInfo info =
-                        FileVersionInfo.GetVersionInfo(path);
+                    FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
+                    string? fileVersion = info.FileVersion;
 
-                    return !string.IsNullOrWhiteSpace(info.FileVersion)
-                        ? info.FileVersion
-                        : "Unknown";
+                    if (!string.IsNullOrWhiteSpace(fileVersion) &&
+                        Version.TryParse(fileVersion, out _))
+                    {
+                        return fileVersion;
+                    }
+
+                    return "Unknown";
                 }
 
-                // Vivado: Execute its version command.
+                string arguments = tool.VersionArguments ?? "";
 
-                if (string.Equals(
-                    tool.Type,
-                    "vivado",
-                    StringComparison.OrdinalIgnoreCase))
+                bool supportsVersionCommand =
+                    string.Equals(tool.Type, "ghdl", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(tool.Type, "vivado", StringComparison.OrdinalIgnoreCase);
+
+                // GHDL and Vivado continue to use their version commands.
+                if (supportsVersionCommand &&
+                    !string.IsNullOrWhiteSpace(arguments))
                 {
-                    string arguments =
-                        string.IsNullOrWhiteSpace(tool.VersionArguments)
-                        ? "-version"
-                        : tool.VersionArguments;
-
                     string output = RunVersionCommand(path, arguments);
+                    string parsedVersion = ParseToolVersion(tool.Type, output);
 
-                    Match match = Regex.Match(
-                        output,
-                        @"\d{4}\.\d+"
-                    );
-
-                    return match.Success ? match.Value : "Unknown";
+                    if (parsedVersion != "Unknown")
+                        return parsedVersion;
                 }
 
-                // Other tools: Read Windows file version.
+                // Fallback: read version metadata embedded in the executable.
+                FileVersionInfo fallbackInfo = FileVersionInfo.GetVersionInfo(path);
+                string? fallbackVersion = fallbackInfo.FileVersion;
 
-                FileVersionInfo fileInfo =
-                    FileVersionInfo.GetVersionInfo(path);
-
-                return !string.IsNullOrWhiteSpace(fileInfo.FileVersion)
-                    ? fileInfo.FileVersion
-                    : "Unknown";
+                if (!string.IsNullOrWhiteSpace(fallbackVersion) &&
+                    Version.TryParse(fallbackVersion, out _))
+                {
+                    return fallbackVersion;
+                }
             }
             catch
             {
-                return "Unknown";
+                // If command execution or metadata reading fails, report unknown.
             }
+
+            return "Unknown";
         }
 
-        private string RunVersionCommand(
-            string executablePath,
-            string arguments)
+        private string ParseToolVersion(string toolType, string output)
+        {
+            if (string.IsNullOrWhiteSpace(output))
+                return "Unknown";
+
+            Match match;
+
+            if (string.Equals(toolType, "vscode", StringComparison.OrdinalIgnoreCase))
+            {
+                // VS Code --version prints the version on its first line.
+                match = Regex.Match(output, @"(?m)^\s*(\d+\.\d+\.\d+)\s*$");
+            }
+            else if (string.Equals(toolType, "ghdl", StringComparison.OrdinalIgnoreCase))
+            {
+                match = Regex.Match(
+                    output,
+                    @"(?i)\bGHDL\s+v?(\d+(?:\.\d+){1,3})");
+            }
+            else if (string.Equals(toolType, "vivado", StringComparison.OrdinalIgnoreCase))
+            {
+                match = Regex.Match(output, @"\b(\d{4}\.\d+)\b");
+            }
+            else
+            {
+                match = Regex.Match(output, @"\b(\d+(?:\.\d+){1,3})\b");
+            }
+
+            return match.Success ? match.Groups[1].Value : "Unknown";
+        }
+
+        private string RunVersionCommand(string executablePath, string arguments)
         {
             try
             {
-                ProcessStartInfo startInfo = new ProcessStartInfo
+                bool isBatchFile = executablePath.EndsWith(
+                    ".bat", StringComparison.OrdinalIgnoreCase) ||
+                    executablePath.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
+
+                ProcessStartInfo startInfo;
+
+                if (isBatchFile)
                 {
-                    FileName = "cmd.exe",
-                    Arguments = "/d /s /c \"\"" +
-                                executablePath + "\" " +
-                                arguments + "\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
+                    startInfo = new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = "/d /s /c \"\"" + executablePath +
+                                    "\" " + arguments + "\"",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+                }
+                else
+                {
+                    startInfo = new ProcessStartInfo
+                    {
+                        FileName = executablePath,
+                        Arguments = arguments,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+                }
 
                 using Process? process = Process.Start(startInfo);
-
                 if (process == null)
                     return "";
 
-                var outputTask =
-                    process.StandardOutput.ReadToEndAsync();
-
-                var errorTask =
-                    process.StandardError.ReadToEndAsync();
+                Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+                Task<string> errorTask = process.StandardError.ReadToEndAsync();
 
                 if (!process.WaitForExit(15000))
                 {
@@ -417,22 +732,56 @@ namespace EDAEnvironmentAudit
 
         private bool IsVersionApproved(
             string installedVersion,
-            string minimumVersion)
+            string minimumVersion,
+            string maximumVersion)
         {
-            if (string.IsNullOrWhiteSpace(minimumVersion))
-                return true;
-
-            if (!Version.TryParse(
-                installedVersion,
-                out Version? installed))
+            if (!Version.TryParse(installedVersion, out Version? installed))
                 return false;
 
-            if (!Version.TryParse(
-                minimumVersion,
-                out Version? minimum))
-                return false;
+            if (!string.IsNullOrWhiteSpace(minimumVersion))
+            {
+                if (!Version.TryParse(minimumVersion, out Version? minimum) ||
+                    installed.CompareTo(minimum) < 0)
+                    return false;
+            }
 
-            return installed.CompareTo(minimum) >= 0;
+            if (!string.IsNullOrWhiteSpace(maximumVersion))
+            {
+                if (!Version.TryParse(maximumVersion, out Version? maximum) ||
+                    installed.CompareTo(maximum) > 0)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private string GetVersionApprovalReason(
+            string installedVersion,
+            string minimumVersion,
+            string maximumVersion)
+        {
+            if (!Version.TryParse(installedVersion, out Version? installed))
+                return "The detected version number could not be interpreted.";
+
+            if (!string.IsNullOrWhiteSpace(minimumVersion))
+            {
+                if (!Version.TryParse(minimumVersion, out Version? minimum))
+                    return "The minimum approved version in the manifest is invalid.";
+
+                if (installed.CompareTo(minimum) < 0)
+                    return $"Version is below the minimum approved version ({minimumVersion}).";
+            }
+
+            if (!string.IsNullOrWhiteSpace(maximumVersion))
+            {
+                if (!Version.TryParse(maximumVersion, out Version? maximum))
+                    return "The maximum approved version in the manifest is invalid.";
+
+                if (installed.CompareTo(maximum) > 0)
+                    return $"Version is above the maximum approved version ({maximumVersion}).";
+            }
+
+            return "Version is within the approved range.";
         }
 
         // --------------------------------------------------
@@ -446,6 +795,8 @@ namespace EDAEnvironmentAudit
             string readinessStatus = "Not Checked";
             string version = "Not Available";
             string? installedPath = null;
+            string reason = "";
+            string matchedExtensionName = "";
 
             // Disabled extensions are excluded from
             // the overall environment readiness calculation.
@@ -457,7 +808,8 @@ namespace EDAEnvironmentAudit
                     installationStatus,
                     readinessStatus,
                     version,
-                    installedPath
+                    installedPath,
+                    "Extension check is disabled in the manifest."
                 );
 
                 return true;
@@ -470,12 +822,7 @@ namespace EDAEnvironmentAudit
                     StringComparison.OrdinalIgnoreCase)
             );
 
-            if (editor == null)
-            {
-                installationStatus = "Not Detected";
-                readinessStatus = "Not Ready";
-            }
-            else if (FindExecutable(editor) == null)
+            if (editor == null || FindExecutable(editor) == null)
             {
                 installationStatus = "Not Detected";
                 readinessStatus = "Not Ready";
@@ -489,39 +836,59 @@ namespace EDAEnvironmentAudit
                     "extensions"
                 );
 
-                if (!Directory.Exists(extensionsPath))
+                if (Directory.Exists(extensionsPath))
+                {
+                    // Use the manifest order as the preference order.
+                    // Stop as soon as one approved extension is found.
+                    List<string> approvedIds = (extension.ApprovedExtensions ?? new List<string>())
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .ToList();
+
+                    // Keep compatibility with older manifests that use
+                    // a single "extensionId" property.
+                    if (approvedIds.Count == 0 &&
+                        !string.IsNullOrWhiteSpace(extension.ExtensionId))
+                    {
+                        approvedIds.Add(extension.ExtensionId);
+                    }
+
+                    foreach (string approvedId in approvedIds)
+                    {
+                        if (TryFindInstalledExtension(
+                            extensionsPath,
+                            approvedId,
+                            out version,
+                            out installedPath,
+                            out matchedExtensionName))
+                        {
+                            installationStatus = "Detected";
+                            readinessStatus = "Ready";
+                            break;
+                        }
+                    }
+                }
+
+                if (readinessStatus != "Ready")
                 {
                     installationStatus = "Not Detected";
                     readinessStatus = "Not Ready";
                 }
-                else
-                {
-                    bool found = TryFindInstalledExtension(
-                        extensionsPath,
-                        extension.ExtensionId,
-                        out version,
-                        out installedPath
-                    );
-
-                    if (found)
-                    {
-                        installationStatus = "Detected";
-                        readinessStatus = "Ready";
-                    }
-                    else
-                    {
-                        installationStatus = "Not Detected";
-                        readinessStatus = "Not Ready";
-                    }
-                }
             }
 
+            // Display the actual installed extension's name, not the
+            // generic manifest requirement name.
+            string displayName = readinessStatus == "Ready" &&
+                                 !string.IsNullOrWhiteSpace(matchedExtensionName)
+                ? matchedExtensionName
+                : extension.Name;
+
             CreateResultCard(
-                extension.Name,
+                displayName,
                 installationStatus,
                 readinessStatus,
                 version,
-                installedPath
+                installedPath,
+                reason
             );
 
             return readinessStatus == "Ready";
@@ -535,10 +902,12 @@ namespace EDAEnvironmentAudit
             string extensionsPath,
             string requiredExtensionId,
             out string version,
-            out string? installedPath)
+            out string? installedPath,
+            out string installedExtensionName)
         {
             version = "Not Available";
             installedPath = null;
+            installedExtensionName = requiredExtensionId;
 
             try
             {
@@ -591,6 +960,24 @@ namespace EDAEnvironmentAudit
 
                         installedPath = folder;
 
+                        // package.json contains the extension's friendly name.
+                        if (root.TryGetProperty(
+                            "displayName",
+                            out JsonElement displayNameElement) &&
+                            displayNameElement.ValueKind == JsonValueKind.String)
+                        {
+                            string? packageDisplayName = displayNameElement.GetString();
+                            if (!string.IsNullOrWhiteSpace(packageDisplayName))
+                                installedExtensionName = packageDisplayName;
+                        }
+                        else if (root.TryGetProperty(
+                            "name",
+                            out JsonElement packageNameElement) &&
+                            packageNameElement.ValueKind == JsonValueKind.String)
+                        {
+                            installedExtensionName = packageNameElement.GetString() ?? requiredExtensionId;
+                        }
+
                         if (root.TryGetProperty(
                             "version",
                             out JsonElement versionElement))
@@ -632,11 +1019,12 @@ namespace EDAEnvironmentAudit
             string installationStatus,
             string readinessStatus,
             string version,
-            string? path)
+            string? path,
+            string reason = "")
         {
             Panel card = new Panel
             {
-                Size = new Size(925, 145),
+                Size = new Size(925, 185),
                 BackColor = Color.White,
                 Margin = new Padding(0, 0, 0, 12),
                 BorderStyle = BorderStyle.FixedSingle
@@ -674,16 +1062,43 @@ namespace EDAEnvironmentAudit
                 Font = new Font("Segoe UI", 9),
                 Location = new Point(15, 83),
                 AutoSize = true,
-                ForeColor = Color.DimGray
+                ForeColor = readinessStatus == "Ready"
+                    ? Color.ForestGreen
+                    : readinessStatus == "Not Ready"
+                        ? Color.Firebrick
+                        : Color.DimGray
             };
+
+            // Show a reason only when an executable/extension was detected
+            // but its version or configuration is not approved.
+            // Ready and Not Detected cards do not need a reason.
+            bool showReason =
+                installationStatus == "Detected" &&
+                readinessStatus == "Not Ready" &&
+                !string.IsNullOrWhiteSpace(reason);
+
+            Label? reasonLabel = null;
+
+            if (showReason)
+            {
+                reasonLabel = new Label
+                {
+                    Text = "Reason: " + reason,
+                    Font = new Font("Segoe UI", 8),
+                    Location = new Point(15, 106),
+                    AutoSize = true,
+                    MaximumSize = new Size(690, 0),
+                    ForeColor = Color.Firebrick
+                };
+            }
 
             Label pathLabel = new Label
             {
                 Text = "Location: " + (path ?? "Not Available"),
                 Font = new Font("Segoe UI", 8),
-                Location = new Point(15, 106),
+                Location = new Point(15, showReason ? 148 : 106),
                 AutoSize = true,
-                MaximumSize = new Size(650, 0),
+                MaximumSize = new Size(690, 0),
                 ForeColor = Color.Gray
             };
 
@@ -720,6 +1135,10 @@ namespace EDAEnvironmentAudit
             card.Controls.Add(installationLabel);
             card.Controls.Add(readinessLabel);
             card.Controls.Add(versionLabel);
+
+            if (reasonLabel != null)
+                card.Controls.Add(reasonLabel);
+
             card.Controls.Add(pathLabel);
             card.Controls.Add(actionButton);
 
@@ -795,9 +1214,19 @@ namespace EDAEnvironmentAudit
 
         public string Executable { get; set; } = "";
 
+        public string WhereCommand { get; set; } = "";
+
         public string MinimumApprovedVersion { get; set; } = "";
 
+        public string MaximumApprovedVersion { get; set; } = "";
+
         public string VersionArguments { get; set; } = "";
+
+        public string FolderPattern { get; set; } = "";
+
+        public string RelativeExecutablePath { get; set; } = "";
+
+        public List<string> SearchRoots { get; set; } = new();
 
         public List<string> CommonPaths { get; set; } = new();
 
@@ -814,6 +1243,10 @@ namespace EDAEnvironmentAudit
 
         public string Editor { get; set; } = "";
 
+        // Checked from first to last. The first installed ID wins.
+        public List<string> ApprovedExtensions { get; set; } = new();
+
+        // Retained for compatibility with older single-extension manifests.
         public string ExtensionId { get; set; } = "";
 
         public bool CheckEnabled { get; set; }
