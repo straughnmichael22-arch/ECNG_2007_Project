@@ -1,16 +1,16 @@
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace EDAEnvironmentAudit
+namespace EDAEnvironmentManager
 {
     public class AuditWindow : Form
     {
@@ -24,9 +24,9 @@ namespace EDAEnvironmentAudit
         public AuditWindow()
         {
             Text = "EDA Environment Audit - Results";
-            Size = new Size(1050, 700);
+            Size = new Size(1100, 780);
             StartPosition = FormStartPosition.CenterScreen;
-            MinimumSize = new Size(850, 550);
+            MinimumSize = new Size(900, 600);
             BackColor = Color.FromArgb(245, 247, 250);
 
             BuildInterface();
@@ -42,30 +42,30 @@ namespace EDAEnvironmentAudit
             Label title = new Label
             {
                 Text = "Environment Audit",
-                Font = new Font("Segoe UI", 22, FontStyle.Bold),
+                Font = new Font("Segoe UI", 24, FontStyle.Bold),
                 ForeColor = Color.FromArgb(35, 45, 60),
                 AutoSize = true,
-                Location = new Point(30, 25)
+                Location = new Point(35, 25)
             };
 
             Label description = new Label
             {
                 Text = "Check installed EDA tools and their approved configurations.",
-                Font = new Font("Segoe UI", 10),
+                Font = new Font("Segoe UI", 10.5f),
                 ForeColor = Color.Gray,
                 AutoSize = true,
-                Location = new Point(33, 75)
+                Location = new Point(38, 80)
             };
 
             runAuditButton = new Button
             {
                 Text = "Run Audit",
-                Size = new Size(130, 40),
-                Location = new Point(30, 115),
+                Size = new Size(140, 42),
+                Location = new Point(35, 120),
                 BackColor = Color.FromArgb(35, 110, 190),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
 
@@ -75,25 +75,25 @@ namespace EDAEnvironmentAudit
             statusLabel = new Label
             {
                 Text = "Ready to run audit.",
-                Font = new Font("Segoe UI", 10),
+                Font = new Font("Segoe UI", 10.5f),
                 AutoSize = true,
-                Location = new Point(180, 127),
+                Location = new Point(195, 133),
                 ForeColor = Color.DimGray
             };
 
             overallStatusLabel = new Label
             {
                 Text = "Overall Environment: Not Audited",
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                Font = new Font("Segoe UI", 13, FontStyle.Bold),
                 AutoSize = true,
-                Location = new Point(30, 165),
+                Location = new Point(35, 178),
                 ForeColor = Color.DimGray
             };
 
             resultsPanel = new FlowLayoutPanel
             {
-                Location = new Point(30, 205),
-                Size = new Size(970, 420),
+                Location = new Point(35, 220),
+                Size = new Size(1015, 490),
                 AutoScroll = true,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
@@ -179,8 +179,6 @@ namespace EDAEnvironmentAudit
             int totalComponents = 0;
             bool allReady = true;
 
-            // Audit tools.
-
             foreach (EdaTool tool in manifest.Tools)
             {
                 bool toolReady = AddToolResult(tool);
@@ -191,8 +189,6 @@ namespace EDAEnvironmentAudit
                 totalComponents++;
             }
 
-            // Audit extensions.
-
             foreach (EdaExtension extension in manifest.Extensions)
             {
                 bool extensionReady = AddExtensionResult(extension);
@@ -202,8 +198,6 @@ namespace EDAEnvironmentAudit
 
                 totalComponents++;
             }
-
-            // Overall environment readiness.
 
             if (allReady)
             {
@@ -234,8 +228,6 @@ namespace EDAEnvironmentAudit
         {
             List<string> foundPaths = new List<string>();
 
-            // The manifest supplies the command used by where.exe.
-            // Fall back to the executable name for older manifests.
             string whereCommand = !string.IsNullOrWhiteSpace(tool.WhereCommand)
                 ? tool.WhereCommand
                 : tool.Executable;
@@ -248,8 +240,6 @@ namespace EDAEnvironmentAudit
                 }
             }
 
-            // Also search the manifest paths. This allows the audit to find
-            // an approved installation even if PATH has an older copy first.
             foundPaths.AddRange(FindUsingManifest(tool));
 
             return foundPaths
@@ -268,7 +258,6 @@ namespace EDAEnvironmentAudit
                 return paths;
             }
 
-            // If where.exe returned the actual executable, use it directly.
             if (string.Equals(
                 Path.GetFileName(commandPath),
                 tool.Executable,
@@ -284,10 +273,8 @@ namespace EDAEnvironmentAudit
             if (string.IsNullOrWhiteSpace(commandDirectory))
                 return paths;
 
-            // Some tools expose a command shim in a child "bin" folder
-            // while the actual executable is in the installation directory
-            // above it (for example, VS Code's code.cmd -> Code.exe).
             DirectoryInfo? containingDirectory = new DirectoryInfo(commandDirectory);
+
             DirectoryInfo? installDirectory =
                 string.Equals(
                     containingDirectory.Name,
@@ -358,7 +345,6 @@ namespace EDAEnvironmentAudit
             }
             catch
             {
-                // If where.exe cannot run, manifest discovery is the fallback.
             }
 
             return paths;
@@ -387,6 +373,7 @@ namespace EDAEnvironmentAudit
                     try
                     {
                         string root = Environment.ExpandEnvironmentVariables(rootPath);
+
                         if (!Directory.Exists(root))
                             continue;
 
@@ -395,8 +382,10 @@ namespace EDAEnvironmentAudit
                         if (string.IsNullOrWhiteSpace(tool.FolderPattern))
                         {
                             string directPath = Path.Combine(root, relativePath);
+
                             if (File.Exists(directPath))
                                 paths.Add(directPath);
+
                             continue;
                         }
 
@@ -404,13 +393,13 @@ namespace EDAEnvironmentAudit
                             root, tool.FolderPattern))
                         {
                             string candidate = Path.Combine(folder, relativePath);
+
                             if (File.Exists(candidate))
                                 paths.Add(candidate);
                         }
                     }
                     catch
                     {
-                        // Skip inaccessible or invalid search roots.
                     }
                 }
             }
@@ -430,14 +419,17 @@ namespace EDAEnvironmentAudit
                 {
                     if (File.Exists(expanded))
                         results.Add(expanded);
+
                     return results;
                 }
 
                 string? root = Path.GetPathRoot(expanded);
+
                 if (string.IsNullOrWhiteSpace(root))
                     return results;
 
                 string remainder = expanded.Substring(root.Length);
+
                 string[] segments = remainder.Split(
                     new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
                     StringSplitOptions.RemoveEmptyEntries);
@@ -464,11 +456,11 @@ namespace EDAEnvironmentAudit
                         }
                         catch
                         {
-                            // Skip inaccessible folders and continue with other matches.
                         }
                     }
 
                     currentPaths = nextPaths;
+
                     if (currentPaths.Count == 0)
                         break;
                 }
@@ -477,7 +469,6 @@ namespace EDAEnvironmentAudit
             }
             catch
             {
-                // Ignore malformed manifest paths.
             }
 
             return results;
@@ -486,23 +477,17 @@ namespace EDAEnvironmentAudit
         private bool AddToolResult(EdaTool tool)
         {
             List<string> candidates = FindExecutables(tool);
+
             string? installedPath = null;
             string version = "Not Available";
             bool ready = false;
 
-            // Version checking is only required when the manifest specifies
-            // at least one approved version limit. With no limits, detection
-            // alone is enough to mark the tool Ready (for example, Surfer).
             bool checkVersion =
                 !string.IsNullOrWhiteSpace(tool.MinimumApprovedVersion) ||
                 !string.IsNullOrWhiteSpace(tool.MaximumApprovedVersion);
 
-            // Check every discovered location. A stale PATH entry should not
-            // hide another installation that meets the approved version range.
             foreach (string candidate in candidates)
             {
-                // Detection-only tools do not launch a version command or
-                // inspect executable version metadata.
                 if (!checkVersion)
                 {
                     installedPath = candidate;
@@ -525,7 +510,6 @@ namespace EDAEnvironmentAudit
                     break;
                 }
 
-                // Keep the first discovered installation for useful diagnostics.
                 if (installedPath == null)
                 {
                     installedPath = candidate;
@@ -538,7 +522,10 @@ namespace EDAEnvironmentAudit
                 : "Detected";
 
             string readinessStatus = ready ? "Ready" : "Not Ready";
-            string displayedVersion = version == "Unknown" ? "Not Available" : version;
+
+            string displayedVersion =
+                version == "Unknown" ? "Not Available" : version;
+
             string reason;
 
             if (installedPath == null)
@@ -568,7 +555,8 @@ namespace EDAEnvironmentAudit
                 readinessStatus,
                 displayedVersion,
                 installedPath,
-                reason
+                reason,
+                tool
             );
 
             return ready;
@@ -582,14 +570,13 @@ namespace EDAEnvironmentAudit
         {
             try
             {
-                // VS Code: read the version from the executable metadata.
-                // This avoids launching the VS Code editor during the audit.
                 if (string.Equals(
                     tool.Type,
                     "vscode",
                     StringComparison.OrdinalIgnoreCase))
                 {
                     FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
+
                     string? fileVersion = info.FileVersion;
 
                     if (!string.IsNullOrWhiteSpace(fileVersion) &&
@@ -607,19 +594,19 @@ namespace EDAEnvironmentAudit
                     string.Equals(tool.Type, "ghdl", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(tool.Type, "vivado", StringComparison.OrdinalIgnoreCase);
 
-                // GHDL and Vivado continue to use their version commands.
                 if (supportsVersionCommand &&
                     !string.IsNullOrWhiteSpace(arguments))
                 {
                     string output = RunVersionCommand(path, arguments);
+
                     string parsedVersion = ParseToolVersion(tool.Type, output);
 
                     if (parsedVersion != "Unknown")
                         return parsedVersion;
                 }
 
-                // Fallback: read version metadata embedded in the executable.
                 FileVersionInfo fallbackInfo = FileVersionInfo.GetVersionInfo(path);
+
                 string? fallbackVersion = fallbackInfo.FileVersion;
 
                 if (!string.IsNullOrWhiteSpace(fallbackVersion) &&
@@ -630,7 +617,6 @@ namespace EDAEnvironmentAudit
             }
             catch
             {
-                // If command execution or metadata reading fails, report unknown.
             }
 
             return "Unknown";
@@ -645,7 +631,6 @@ namespace EDAEnvironmentAudit
 
             if (string.Equals(toolType, "vscode", StringComparison.OrdinalIgnoreCase))
             {
-                // VS Code --version prints the version on its first line.
                 match = Regex.Match(output, @"(?m)^\s*(\d+\.\d+\.\d+)\s*$");
             }
             else if (string.Equals(toolType, "ghdl", StringComparison.OrdinalIgnoreCase))
@@ -670,8 +655,8 @@ namespace EDAEnvironmentAudit
         {
             try
             {
-                bool isBatchFile = executablePath.EndsWith(
-                    ".bat", StringComparison.OrdinalIgnoreCase) ||
+                bool isBatchFile =
+                    executablePath.EndsWith(".bat", StringComparison.OrdinalIgnoreCase) ||
                     executablePath.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
 
                 ProcessStartInfo startInfo;
@@ -703,6 +688,7 @@ namespace EDAEnvironmentAudit
                 }
 
                 using Process? process = Process.Start(startInfo);
+
                 if (process == null)
                     return "";
 
@@ -798,9 +784,6 @@ namespace EDAEnvironmentAudit
             string reason = "";
             string matchedExtensionName = "";
 
-            // Disabled extensions are excluded from
-            // the overall environment readiness calculation.
-
             if (!extension.CheckEnabled)
             {
                 CreateResultCard(
@@ -838,14 +821,11 @@ namespace EDAEnvironmentAudit
 
                 if (Directory.Exists(extensionsPath))
                 {
-                    // Use the manifest order as the preference order.
-                    // Stop as soon as one approved extension is found.
-                    List<string> approvedIds = (extension.ApprovedExtensions ?? new List<string>())
+                    List<string> approvedIds =
+                        (extension.ApprovedExtensions ?? new List<string>())
                         .Where(id => !string.IsNullOrWhiteSpace(id))
                         .ToList();
 
-                    // Keep compatibility with older manifests that use
-                    // a single "extensionId" property.
                     if (approvedIds.Count == 0 &&
                         !string.IsNullOrWhiteSpace(extension.ExtensionId))
                     {
@@ -875,12 +855,11 @@ namespace EDAEnvironmentAudit
                 }
             }
 
-            // Display the actual installed extension's name, not the
-            // generic manifest requirement name.
-            string displayName = readinessStatus == "Ready" &&
-                                 !string.IsNullOrWhiteSpace(matchedExtensionName)
-                ? matchedExtensionName
-                : extension.Name;
+            string displayName =
+                readinessStatus == "Ready" &&
+                !string.IsNullOrWhiteSpace(matchedExtensionName)
+                    ? matchedExtensionName
+                    : extension.Name;
 
             CreateResultCard(
                 displayName,
@@ -914,10 +893,7 @@ namespace EDAEnvironmentAudit
                 foreach (string folder in
                     Directory.EnumerateDirectories(extensionsPath))
                 {
-                    string packagePath = Path.Combine(
-                        folder,
-                        "package.json"
-                    );
+                    string packagePath = Path.Combine(folder, "package.json");
 
                     if (!File.Exists(packagePath))
                         continue;
@@ -926,19 +902,14 @@ namespace EDAEnvironmentAudit
                     {
                         string json = File.ReadAllText(packagePath);
 
-                        using JsonDocument document =
-                            JsonDocument.Parse(json);
+                        using JsonDocument document = JsonDocument.Parse(json);
 
                         JsonElement root = document.RootElement;
 
-                        if (!root.TryGetProperty(
-                            "publisher",
-                            out JsonElement publisherElement))
+                        if (!root.TryGetProperty("publisher", out JsonElement publisherElement))
                             continue;
 
-                        if (!root.TryGetProperty(
-                            "name",
-                            out JsonElement nameElement))
+                        if (!root.TryGetProperty("name", out JsonElement nameElement))
                             continue;
 
                         string? publisher = publisherElement.GetString();
@@ -948,8 +919,7 @@ namespace EDAEnvironmentAudit
                             string.IsNullOrWhiteSpace(name))
                             continue;
 
-                        string installedExtensionId =
-                            publisher + "." + name;
+                        string installedExtensionId = publisher + "." + name;
 
                         if (!installedExtensionId.Equals(
                             requiredExtensionId,
@@ -960,13 +930,13 @@ namespace EDAEnvironmentAudit
 
                         installedPath = folder;
 
-                        // package.json contains the extension's friendly name.
                         if (root.TryGetProperty(
                             "displayName",
                             out JsonElement displayNameElement) &&
                             displayNameElement.ValueKind == JsonValueKind.String)
                         {
                             string? packageDisplayName = displayNameElement.GetString();
+
                             if (!string.IsNullOrWhiteSpace(packageDisplayName))
                                 installedExtensionName = packageDisplayName;
                         }
@@ -975,36 +945,30 @@ namespace EDAEnvironmentAudit
                             out JsonElement packageNameElement) &&
                             packageNameElement.ValueKind == JsonValueKind.String)
                         {
-                            installedExtensionName = packageNameElement.GetString() ?? requiredExtensionId;
+                            installedExtensionName =
+                                packageNameElement.GetString() ?? requiredExtensionId;
                         }
 
-                        if (root.TryGetProperty(
-                            "version",
-                            out JsonElement versionElement))
+                        if (root.TryGetProperty("version", out JsonElement versionElement))
                         {
-                            version =
-                                versionElement.GetString() ?? "Not Available";
+                            version = versionElement.GetString() ?? "Not Available";
                         }
 
                         return true;
                     }
                     catch (JsonException)
                     {
-                        // Skip invalid package.json files.
                     }
                     catch (IOException)
                     {
-                        // Skip files that cannot be read.
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        // Skip inaccessible files.
                     }
                 }
             }
             catch
             {
-                // Handle inaccessible extensions directory.
             }
 
             return false;
@@ -1020,29 +984,30 @@ namespace EDAEnvironmentAudit
             string readinessStatus,
             string version,
             string? path,
-            string reason = "")
+            string reason = "",
+            EdaTool? tool = null)
         {
             Panel card = new Panel
             {
-                Size = new Size(925, 185),
+                Size = new Size(970, 195),
                 BackColor = Color.White,
-                Margin = new Padding(0, 0, 0, 12),
+                Margin = new Padding(0, 0, 0, 16),
                 BorderStyle = BorderStyle.FixedSingle
             };
 
             Label nameLabel = new Label
             {
                 Text = name,
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                Location = new Point(15, 10),
+                Font = new Font("Segoe UI", 13, FontStyle.Bold),
+                Location = new Point(20, 14),
                 AutoSize = true
             };
 
             Label installationLabel = new Label
             {
                 Text = "Installation Status: " + installationStatus,
-                Font = new Font("Segoe UI", 9),
-                Location = new Point(15, 38),
+                Font = new Font("Segoe UI", 9.5f),
+                Location = new Point(20, 44),
                 AutoSize = true,
                 ForeColor = GetStatusColor(installationStatus)
             };
@@ -1050,8 +1015,8 @@ namespace EDAEnvironmentAudit
             Label readinessLabel = new Label
             {
                 Text = "Readiness Status: " + readinessStatus,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                Location = new Point(15, 60),
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                Location = new Point(20, 68),
                 AutoSize = true,
                 ForeColor = GetStatusColor(readinessStatus)
             };
@@ -1059,8 +1024,8 @@ namespace EDAEnvironmentAudit
             Label versionLabel = new Label
             {
                 Text = "Version: " + version,
-                Font = new Font("Segoe UI", 9),
-                Location = new Point(15, 83),
+                Font = new Font("Segoe UI", 9.5f),
+                Location = new Point(20, 92),
                 AutoSize = true,
                 ForeColor = readinessStatus == "Ready"
                     ? Color.ForestGreen
@@ -1069,9 +1034,6 @@ namespace EDAEnvironmentAudit
                         : Color.DimGray
             };
 
-            // Show a reason only when an executable/extension was detected
-            // but its version or configuration is not approved.
-            // Ready and Not Detected cards do not need a reason.
             bool showReason =
                 installationStatus == "Detected" &&
                 readinessStatus == "Not Ready" &&
@@ -1084,10 +1046,10 @@ namespace EDAEnvironmentAudit
                 reasonLabel = new Label
                 {
                     Text = "Reason: " + reason,
-                    Font = new Font("Segoe UI", 8),
-                    Location = new Point(15, 106),
+                    Font = new Font("Segoe UI", 8.5f),
+                    Location = new Point(20, 118),
                     AutoSize = true,
-                    MaximumSize = new Size(690, 0),
+                    MaximumSize = new Size(720, 0),
                     ForeColor = Color.Firebrick
                 };
             }
@@ -1095,22 +1057,21 @@ namespace EDAEnvironmentAudit
             Label pathLabel = new Label
             {
                 Text = "Location: " + (path ?? "Not Available"),
-                Font = new Font("Segoe UI", 8),
-                Location = new Point(15, showReason ? 148 : 106),
+                Font = new Font("Segoe UI", 8.5f),
+                Location = new Point(20, showReason ? 158 : 118),
                 AutoSize = true,
-                MaximumSize = new Size(690, 0),
+                MaximumSize = new Size(720, 0),
                 ForeColor = Color.Gray
             };
 
             bool showSmokeTest = readinessStatus == "Ready";
-
             bool showRemediation = readinessStatus == "Not Ready";
 
             Button actionButton = new Button
             {
                 Text = showSmokeTest ? "Smoke Test" : "Remediate",
-                Location = new Point(730, 48),
-                Size = new Size(160, 40),
+                Location = new Point(770, 52),
+                Size = new Size(165, 42),
                 BackColor = showSmokeTest
                     ? Color.FromArgb(35, 140, 90)
                     : Color.FromArgb(35, 110, 190),
@@ -1126,9 +1087,19 @@ namespace EDAEnvironmentAudit
             actionButton.Click += (sender, e) =>
             {
                 if (showSmokeTest)
-                    RunSmokeTest(name);
+                {
+                    if (tool != null && path != null)
+                        RunSmokeTest(tool, path);
+                    else
+                        RunSmokeTest(name);
+                }
                 else if (showRemediation)
-                    RunRemediation(name);
+                {
+                    if (tool != null)
+                        RunRemediation(tool);
+                    else
+                        RunRemediation(name);
+                }
             };
 
             card.Controls.Add(nameLabel);
@@ -1151,35 +1122,283 @@ namespace EDAEnvironmentAudit
 
         private Color GetStatusColor(string status)
         {
-            if (status == "Ready" ||
-                status == "Detected")
-            {
+            if (status == "Ready" || status == "Detected")
                 return Color.ForestGreen;
-            }
 
-            if (status == "Not Ready" ||
-                status == "Not Detected")
-            {
+            if (status == "Not Ready" || status == "Not Detected")
                 return Color.Firebrick;
-            }
 
             return Color.DimGray;
         }
 
         // --------------------------------------------------
-        // ACTION BUTTONS
+        // SMOKE TEST DISPATCHER (CLEAN ROUTER)
         // --------------------------------------------------
 
         private void RunSmokeTest(string componentName)
         {
             MessageBox.Show(
-                "Smoke Test selected for " + componentName +
-                ".\n\nSmoke-test functionality has not been implemented yet.",
+                "No smoke test has been implemented for " + componentName + ".",
                 "Smoke Test",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information
             );
         }
+
+        private void RunSmokeTest(EdaTool tool, string executablePath)
+        {
+            if (tool.SmokeTest == null || !tool.SmokeTest.Enabled)
+            {
+                MessageBox.Show(
+                    "Smoke test is disabled or not configured for " + tool.Name + ".",
+                    "Smoke Test",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+                return;
+            }
+
+            // Route based on tool type
+            if (string.Equals(tool.Type, "ghdl", StringComparison.OrdinalIgnoreCase))
+            {
+                RunGhdlSmokeTest(tool, executablePath);
+            }
+            else
+            {
+                MessageBox.Show(
+                    "No smoke-test implementation exists for " + tool.Name + ".",
+                    "Smoke Test",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+            }
+        }
+
+        // --------------------------------------------------
+        // GHDL SMOKE TEST (SELF-CONTAINED ENCAPSULATION)
+        // --------------------------------------------------
+
+        private async void RunGhdlSmokeTest(EdaTool tool, string executablePath)
+        {
+            DialogResult confirmation = MessageBox.Show(
+                this,
+                "This smoke test will check whether GHDL can successfully " +
+                "analyze, elaborate, and simulate a basic VHDL design.\n\n" +
+                "The following actions will take place:\n\n" +
+                "1. A test folder will be created in your Documents folder.\n" +
+                "2. A VHDL test file (hello.vhd) will be written into it.\n" +
+                "3. GHDL will analyze, elaborate, and simulate the design.\n\n" +
+                "Would you like to proceed?",
+                "Confirm GHDL Smoke Test",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            );
+
+            if (confirmation != DialogResult.Yes)
+            {
+                statusLabel.Text = "GHDL smoke test cancelled.";
+                return;
+            }
+
+            try
+            {
+                SmokeTestSettings settings = tool.SmokeTest!;
+                statusLabel.Text = "Running GHDL smoke test...";
+
+                var result = await Task.Run(
+                    () => ExecuteGhdlPipeline(settings, executablePath)
+                );
+
+                statusLabel.Text = result.Success
+                    ? "GHDL smoke test passed."
+                    : "GHDL smoke test failed.";
+
+                MessageBox.Show(
+                    result.Details,
+                    result.Success ? "Smoke Test Passed" : "Smoke Test Failed",
+                    MessageBoxButtons.OK,
+                    result.Success
+                        ? MessageBoxIcon.Information
+                        : MessageBoxIcon.Error
+                );
+            }
+            catch (Exception ex)
+            {
+                statusLabel.Text = "GHDL smoke test failed.";
+
+                MessageBox.Show(
+                    "An error occurred while running the GHDL smoke test:\n\n" +
+                    ex.Message,
+                    "Smoke Test Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
+        private (bool Success, string Details) ExecuteGhdlPipeline(
+            SmokeTestSettings settings,
+            string executablePath)
+        {
+            string documentsPath = Environment.GetFolderPath(
+                Environment.SpecialFolder.MyDocuments
+            );
+
+            string testDirectory = Path.Combine(
+                documentsPath,
+                "WindowsEDAEnvironment",
+                "SmokeTests",
+                "GHDL",
+                DateTime.Now.ToString("yyyyMMdd_HHmmss_fff")
+            );
+
+            Directory.CreateDirectory(testDirectory);
+
+            string testFilePath = Path.Combine(
+                testDirectory,
+                settings.TestFile
+            );
+
+            File.WriteAllText(
+                testFilePath,
+                settings.Source,
+                new UTF8Encoding(false)
+            );
+
+            string standard = settings.Standard;
+
+            // STEP 1: ANALYZE
+            var analyze = RunGhdlCommand(
+                executablePath,
+                testDirectory,
+                "-a",
+                "--std=" + standard,
+                settings.TestFile
+            );
+
+            if (analyze.ExitCode != 0)
+            {
+                return (
+                    false,
+                    "GHDL analysis failed.\n\n" +
+                    analyze.Output +
+                    "\n\nTest files retained at:\n" +
+                    testDirectory
+                );
+            }
+
+            // STEP 2: ELABORATE
+            var elaborate = RunGhdlCommand(
+                executablePath,
+                testDirectory,
+                "-e",
+                "--std=" + standard,
+                settings.Entity
+            );
+
+            if (elaborate.ExitCode != 0)
+            {
+                return (
+                    false,
+                    "GHDL elaboration failed.\n\n" +
+                    elaborate.Output +
+                    "\n\nTest files retained at:\n" +
+                    testDirectory
+                );
+            }
+
+            // STEP 3: SIMULATE
+            var simulation = RunGhdlCommand(
+                executablePath,
+                testDirectory,
+                "-r",
+                "--std=" + standard,
+                settings.Entity
+            );
+
+            if (simulation.ExitCode != 0)
+            {
+                return (
+                    false,
+                    "GHDL simulation failed.\n\n" +
+                    simulation.Output +
+                    "\n\nTest files retained at:\n" +
+                    testDirectory
+                );
+            }
+
+            if (!simulation.Output.Contains(
+                settings.ExpectedOutput,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return (
+                    false,
+                    "GHDL completed, but the expected simulation message was not found.\n\n" +
+                    "Expected:\n" + settings.ExpectedOutput +
+                    "\n\nActual output:\n" + simulation.Output +
+                    "\n\nTest files retained at:\n" + testDirectory
+                );
+            }
+
+            return (
+                true,
+                "GHDL smoke test passed!\n\n" +
+                "Analysis: Passed\n" +
+                "Elaboration: Passed\n" +
+                "Simulation: Passed\n\n" +
+                "Expected output found:\n" +
+                settings.ExpectedOutput +
+                "\n\nTest files retained at:\n" + testDirectory
+            );
+        }
+
+        // --------------------------------------------------
+        // GHDL COMMAND RUNNER
+        // --------------------------------------------------
+
+        private (int ExitCode, string Output) RunGhdlCommand(
+            string executablePath,
+            string workingDirectory,
+            params string[] arguments)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                FileName = executablePath,
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            foreach (string argument in arguments)
+                startInfo.ArgumentList.Add(argument);
+
+            using Process? process = Process.Start(startInfo);
+
+            if (process == null)
+                throw new InvalidOperationException("Could not start GHDL.");
+
+            Task<string> outputTask =
+                process.StandardOutput.ReadToEndAsync();
+
+            Task<string> errorTask =
+                process.StandardError.ReadToEndAsync();
+
+            process.WaitForExit();
+
+            string output = outputTask.GetAwaiter().GetResult();
+            string error = errorTask.GetAwaiter().GetResult();
+
+            string combinedOutput =
+                output + Environment.NewLine + error;
+
+            return (process.ExitCode, combinedOutput);
+        }
+
+        // --------------------------------------------------
+        // REMEDIATION DISPATCHER (CLEAN ROUTER)
+        // --------------------------------------------------
 
         private void RunRemediation(string componentName)
         {
@@ -1190,6 +1409,77 @@ namespace EDAEnvironmentAudit
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information
             );
+        }
+
+        private void RunRemediation(EdaTool tool)
+        {
+            if (tool.Remediation == null || 
+                (tool.Remediation.Instructions.Count == 0 && string.IsNullOrWhiteSpace(tool.Remediation.DownloadUrl)))
+            {
+                MessageBox.Show(
+                    "No remediation instructions are configured for " + tool.Name + ".",
+                    "Remediation",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+                return;
+            }
+
+            RunManualRemediation(tool);
+        }
+
+        // --------------------------------------------------
+        // UNIFIED MANUAL REMEDIATION (DATA-DRIVEN HANDLER)
+        // --------------------------------------------------
+
+        private void RunManualRemediation(EdaTool tool)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Follow these steps to install {tool.Name}:\n");
+
+            for (int i = 0; i < tool.Remediation!.Instructions.Count; i++)
+            {
+                // Double newline spacing between instruction bullet points
+                sb.AppendLine($"{i + 1}.  {tool.Remediation.Instructions[i]}\n");
+            }
+
+            // Original design: Link and prompt at the bottom
+            if (!string.IsNullOrWhiteSpace(tool.Remediation.DownloadUrl))
+            {
+                sb.AppendLine($"Official Website / Download URL:\n{tool.Remediation.DownloadUrl}");
+                sb.AppendLine("\nWould you like to open the download page in your browser now?");
+            }
+
+            DialogResult dialogResult = MessageBox.Show(
+                this,
+                sb.ToString(),
+                $"Remediation Guide: {tool.Name}",
+                !string.IsNullOrWhiteSpace(tool.Remediation.DownloadUrl) 
+                    ? MessageBoxButtons.YesNo 
+                    : MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
+
+            if (dialogResult == DialogResult.Yes && !string.IsNullOrWhiteSpace(tool.Remediation.DownloadUrl))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = tool.Remediation.DownloadUrl,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        "Could not open the browser: " + ex.Message,
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    );
+                }
+            }
         }
     }
 
@@ -1233,6 +1523,34 @@ namespace EDAEnvironmentAudit
         public List<string> ExpectedPaths { get; set; } = new();
 
         public ComponentActions Actions { get; set; } = new();
+
+        public SmokeTestSettings? SmokeTest { get; set; }
+
+        public RemediationSettings? Remediation { get; set; }
+    }
+
+    public class SmokeTestSettings
+    {
+        public bool Enabled { get; set; }
+
+        public string Method { get; set; } = "";
+
+        public string TestFile { get; set; } = "";
+
+        public string Entity { get; set; } = "";
+
+        public string Standard { get; set; } = "";
+
+        public string Source { get; set; } = "";
+
+        public string ExpectedOutput { get; set; } = "";
+    }
+
+    public class RemediationSettings
+    {
+        public string DownloadUrl { get; set; } = "";
+
+        public List<string> Instructions { get; set; } = new();
     }
 
     public class EdaExtension
@@ -1243,10 +1561,8 @@ namespace EDAEnvironmentAudit
 
         public string Editor { get; set; } = "";
 
-        // Checked from first to last. The first installed ID wins.
         public List<string> ApprovedExtensions { get; set; } = new();
 
-        // Retained for compatibility with older single-extension manifests.
         public string ExtensionId { get; set; } = "";
 
         public bool CheckEnabled { get; set; }

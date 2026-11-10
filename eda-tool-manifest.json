@@ -1,4 +1,3 @@
-
 {
   "manifestVersion": "1.0",
   "tools": [
@@ -36,7 +35,21 @@
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": "-version"
+      "versionArguments": "-version",
+      "remediation": {
+        "downloadUrl": "https://www.amd.com/en/support/downloads/adaptive-socs-and-fpgas/development-tools/2026-1.html",
+        "instructions": [
+          "Open the official AMD download page.",
+          "Locate the approved Vivado version.",
+          "Locate and select the AMD Unified Installer for Windows Self Extracting Web Installer.",
+          "Sign in to your AMD account or create one if prompted.",
+          "Enter the required information and accept any applicable terms.",
+          "Download and run the installer.",
+          "Follow the installation instructions and select Vivado Design Suite.",
+          "Complete the Vivado installation.",
+          "Run the environment audit again to verify the installation."
+        ]
+      }
     },
     {
       "name": "GHDL",
@@ -55,7 +68,16 @@
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": "--version"
+      "versionArguments": "--version",
+      "smokeTest": {
+        "enabled": true,
+        "method": "analyze-elaborate-run",
+        "testFile": "hello.vhd",
+        "entity": "hello",
+        "standard": "08",
+        "source": "entity hello is\nend entity hello;\n\narchitecture test of hello is\nbegin\n    process\n    begin\n        report \"GHDL simulation works!\";\n        wait;\n    end process;\nend architecture test;",
+        "expectedOutput": "GHDL simulation works!"
+      }
     },
     {
       "name": "Surfer",
@@ -74,7 +96,18 @@
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": "--version"
+      "versionArguments": "--version",
+      "remediation": {
+        "downloadUrl": "https://surfer-project.org/",
+        "instructions": [
+          "Open the official Surfer website.",
+          "Download the pre-built Windows binary.",
+          "Extract the downloaded archive to a permanent folder.",
+          "Locate surfer.exe.",
+          "If SmartScreen appears, select More info → Run anyway if you trust the download.",
+          "Run the environment audit again."
+        ]
+      }
     }
   ],
   "extensions": [

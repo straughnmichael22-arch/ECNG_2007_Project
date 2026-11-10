@@ -1,9 +1,8 @@
-
 using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace EDAEnvironmentAudit
+namespace EDAEnvironmentManager
 {
     public class StartupWindow : Form
     {
@@ -14,7 +13,7 @@ namespace EDAEnvironmentAudit
         public StartupWindow()
         {
             // Window configuration
-            Text = "Windows EDA Tool Environment Audit";
+            Text = "Windows EDA Environment Manager";
             Size = new Size(650, 420);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -24,23 +23,23 @@ namespace EDAEnvironmentAudit
 
             // Application title
             titleLabel = new Label();
-            titleLabel.Text = "EDA Environment Audit";
+            titleLabel.Text = "EDA Environment Manager";
             titleLabel.Font = new Font("Segoe UI", 22, FontStyle.Bold);
             titleLabel.ForeColor = Color.FromArgb(35, 45, 60);
             titleLabel.AutoSize = true;
-            titleLabel.Location = new Point(125, 85);
+            titleLabel.Location = new Point(125, 65);
 
             // Description
             descriptionLabel = new Label();
             descriptionLabel.Text =
-                  "Welcome to Course Tool Audit.\n" +
-    "Click Run Audit to check for Vivado, VHDL extension, Visual Studio Code,\n" + 
-    "GHDL and Surfer";
+                "Welcome to the EDA Environment Manager.\n\n" +
+                "Click 'Run Audit' to check your system for approved EDA tools,\n" +
+                "with built-in support for remediation and automated testing.";
 
             descriptionLabel.Font = new Font("Segoe UI", 11);
             descriptionLabel.ForeColor = Color.FromArgb(90, 100, 115);
             descriptionLabel.AutoSize = true;
-            descriptionLabel.Location = new Point(65, 160);
+            descriptionLabel.Location = new Point(85, 135);
             descriptionLabel.TextAlign = ContentAlignment.MiddleCenter;
 
             // Run Audit button
@@ -48,7 +47,7 @@ namespace EDAEnvironmentAudit
             runAuditButton.Text = "Run Audit";
             runAuditButton.Font = new Font("Segoe UI", 12, FontStyle.Bold);
             runAuditButton.Size = new Size(180, 50);
-            runAuditButton.Location = new Point(225, 260);
+            runAuditButton.Location = new Point(235, 260);
             runAuditButton.BackColor = Color.FromArgb(35, 110, 190);
             runAuditButton.ForeColor = Color.White;
             runAuditButton.FlatStyle = FlatStyle.Flat;
