@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>P3B.Integration.P3A</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    P3A's audit library, from the group repository
+    (https://github.com/straughnmichael22-arch/ECNG_2007_Project). Found automatically when P3B
+    is the P3B/ folder inside that repository, or when the repository is cloned next to the P3B
+    folder as ECNG_2007_Project. Override with dotnet build -p:P3ARepoRoot=<path>.
+    See docs/INTEGRATION-SEAMS.md.
+  -->
+  <PropertyGroup>
+    <P3ARepoRoot Condition="'$(P3ARepoRoot)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\..\EDAEnvironmentManager.Audit')">$(MSBuildThisFileDirectory)..\..\..</P3ARepoRoot>
+    <P3ARepoRoot Condition="'$(P3ARepoRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\ECNG_2007_Project</P3ARepoRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\P3B.Remediation.Core\P3B.Remediation.Core.csproj" />
+    <ProjectReference Include="$(P3ARepoRoot)\EDAEnvironmentManager.Audit\EDAEnvironmentManager.Audit.csproj" />
+  </ItemGroup>
+
+  <!-- P3A's real manifest, so the dashboard opens it by default. Read only. -->
+  <ItemGroup>
+    <None Include="$(P3ARepoRoot)\eda-tool-manifest.json" Link="eda-tool-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -8,10 +8,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <!-- The audit library is its own project; do not compile its files into the app as well. -->
+  <!-- The audit library and P3B are separate projects; do not compile their files into the app as well. -->
   <ItemGroup>
-    <Compile Remove="EDAEnvironmentManager.Audit\**" />
-    <None Remove="EDAEnvironmentManager.Audit\**" />
+    <Compile Remove="EDAEnvironmentManager.Audit\**;P3B\**" />
+    <None Remove="EDAEnvironmentManager.Audit\**;P3B\**" />
+    <EmbeddedResource Remove="P3B\**" />
     <ProjectReference Include="EDAEnvironmentManager.Audit\EDAEnvironmentManager.Audit.csproj" />
   </ItemGroup>
 

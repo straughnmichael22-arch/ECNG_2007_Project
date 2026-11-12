@@ -1,0 +1,11 @@
+{
+  "_testFixture": "TEST FIXTURE - uses a remediation method outside the provisional proposal.",
+  "manifestVersion": "p3b-provisional-0",
+  "tools": [
+    {
+      "id": "TEST-TOOL-A",
+      "approvedVersions": [ "TEST-VERSION-1" ],
+      "remediation": { "method": "TEST-UNKNOWN-METHOD", "source": "TEST-SOURCE-A" }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+﻿Passed P3B.Remediation.WinForms.Tests.PerformanceTrialTests.PR02_commands_are_acknowledged_within_one_second_during_installation [4 s]
+Trial  1: fix acknowledged in    11.7 ms; command during install answered in    16.7 ms; PASS
+Trial  2: fix acknowledged in     0.1 ms; command during install answered in     0.2 ms; PASS
+Trial  3: fix acknowledged in     0.1 ms; command during install answered in     0.3 ms; PASS
+Trial  4: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial  5: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial  6: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial  7: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial  8: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial  9: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial 10: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial 11: fix acknowledged in     0.0 ms; command during install answered in     0.1 ms; PASS
+Trial 12: fix acknowledged in     0.0 ms; command during install answered in     0.1 ms; PASS
+Trial 13: fix acknowledged in     0.0 ms; command during install answered in     0.1 ms; PASS
+Trial 14: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial 15: fix acknowledged in     0.0 ms; command during install answered in     0.1 ms; PASS
+Trial 16: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial 17: fix acknowledged in     0.0 ms; command during install answered in     0.1 ms; PASS
+Trial 18: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial 19: fix acknowledged in     0.0 ms; command during install answered in     0.2 ms; PASS
+Trial 20: fix acknowledged in     0.1 ms; command during install answered in     0.2 ms; PASS
+P3B-PR-02: 20 of 20 trials within 1 s (required 19).
+Passed P3B.Remediation.WinForms.Tests.PerformanceTrialTests.PR03_outcome_is_available_within_two_seconds_after_the_operation_completes [1 s]
+Trial  1: outcome and smoke-test result available   144.3 ms after completion; PASS
+Trial  2: outcome and smoke-test result available    19.3 ms after completion; PASS
+Trial  3: outcome and smoke-test result available    24.7 ms after completion; PASS
+Trial  4: outcome and smoke-test result available     9.4 ms after completion; PASS
+Trial  5: outcome and smoke-test result available    13.0 ms after completion; PASS
+Trial  6: outcome and smoke-test result available     9.5 ms after completion; PASS
+Trial  7: outcome and smoke-test result available    33.3 ms after completion; PASS
+Trial  8: outcome and smoke-test result available     8.3 ms after completion; PASS
+Trial  9: outcome and smoke-test result available    11.5 ms after completion; PASS
+Trial 10: outcome and smoke-test result available    34.0 ms after completion; PASS
+Trial 11: outcome and smoke-test result available    12.6 ms after completion; PASS
+Trial 12: outcome and smoke-test result available    11.8 ms after completion; PASS
+Trial 13: outcome and smoke-test result available    24.5 ms after completion; PASS
+Trial 14: outcome and smoke-test result available    10.5 ms after completion; PASS
+Trial 15: outcome and smoke-test result available     8.2 ms after completion; PASS
+Trial 16: outcome and smoke-test result available    12.5 ms after completion; PASS
+Trial 17: outcome and smoke-test result available    11.8 ms after completion; PASS
+Trial 18: outcome and smoke-test result available    39.2 ms after completion; PASS
+Trial 19: outcome and smoke-test result available     6.6 ms after completion; PASS
+Trial 20: outcome and smoke-test result available    11.3 ms after completion; PASS
+P3B-PR-03: 20 of 20 trials within 2 s (required 19).

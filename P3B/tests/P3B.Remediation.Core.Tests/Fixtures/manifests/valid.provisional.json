@@ -1,0 +1,23 @@
+{
+  "_testFixture": "TEST FIXTURE - NOT the Local EDA Tool Manifest v1. Uses the provisional P3B proposal and fake values only.",
+  "manifestVersion": "p3b-provisional-0",
+  "tools": [
+    {
+      "id": "TEST-TOOL-A",
+      "displayName": "Test tool A",
+      "approvedVersions": [ "TEST-VERSION-1", "TEST-VERSION-0" ],
+      "remediation": { "method": "winget", "source": "TEST-SOURCE-A" },
+      "smokeTests": [
+        { "kind": "installedVersion" },
+        { "kind": "commandOnPath", "command": "TEST-tool-a" },
+        { "kind": "versionCommand", "command": "TEST-tool-a.exe", "arguments": [ "--version" ], "timeoutSeconds": 20 }
+      ],
+      "detection": { "note": "Properties P3B does not use, such as P3A detection data, are ignored." }
+    },
+    {
+      "id": "TEST-TOOL-NO-FIX",
+      "approvedVersions": [ "TEST-VERSION-1" ],
+      "remediation": { "method": "none" }
+    }
+  ]
+}

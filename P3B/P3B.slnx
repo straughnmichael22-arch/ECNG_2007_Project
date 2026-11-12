@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/P3B.Integration.P3A/P3B.Integration.P3A.csproj" />
+    <Project Path="src/P3B.Remediation.Core/P3B.Remediation.Core.csproj" />
+    <Project Path="src/P3B.Remediation.Windows/P3B.Remediation.Windows.csproj" />
+    <Project Path="src/P3B.Remediation.WinForms/P3B.Remediation.WinForms.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/P3B.Integration.P3A.Tests/P3B.Integration.P3A.Tests.csproj" />
+    <Project Path="tests/P3B.Remediation.Core.Tests/P3B.Remediation.Core.Tests.csproj" />
+    <Project Path="tests/P3B.Remediation.Windows.Tests/P3B.Remediation.Windows.Tests.csproj" />
+    <Project Path="tests/P3B.Remediation.WinForms.Tests/P3B.Remediation.WinForms.Tests.csproj" />
+    <Project Path="tests/P3B.TestProcess/P3B.TestProcess.csproj" />
+  </Folder>
+</Solution>

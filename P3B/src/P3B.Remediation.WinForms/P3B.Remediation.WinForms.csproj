@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>P3B.Remediation.WinForms</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\P3B.Remediation.Core\P3B.Remediation.Core.csproj" />
+    <ProjectReference Include="..\P3B.Remediation.Windows\P3B.Remediation.Windows.csproj" />
+    <ProjectReference Include="..\P3B.Integration.P3A\P3B.Integration.P3A.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="P3B.Remediation.WinForms.Tests" />
+  </ItemGroup>
+
+</Project>

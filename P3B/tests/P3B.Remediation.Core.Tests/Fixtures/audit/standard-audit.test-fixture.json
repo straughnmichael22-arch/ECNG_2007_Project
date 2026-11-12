@@ -1,0 +1,11 @@
+{
+  "_testFixture": "TEST FIXTURE - stands in for staff/P3A audit-state fixtures, which have not been supplied. Fake values only.",
+  "issues": [
+    { "issueId": "TEST-ISSUE-MISSING", "toolId": "TEST-TOOL-A", "state": "missing", "detail": "TEST: not found" },
+    { "issueId": "TEST-ISSUE-UNAPPROVED", "toolId": "TEST-TOOL-B", "state": "unapprovedVersion", "detectedVersion": "TEST-VERSION-NEWER-UNAPPROVED" },
+    { "issueId": "TEST-ISSUE-NO-FIX", "toolId": "TEST-TOOL-NO-FIX", "state": "missing" },
+    { "issueId": "TEST-ISSUE-NOT-IN-MANIFEST", "toolId": "TEST-TOOL-NOT-IN-MANIFEST", "state": "missing" },
+    { "issueId": "TEST-ISSUE-MISCONFIGURED", "toolId": "TEST-TOOL-A", "state": "misconfigured" },
+    { "issueId": "TEST-ISSUE-INCOMPLETE", "state": "missing" }
+  ]
+}

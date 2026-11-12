@@ -1,0 +1,11 @@
+{
+  "_testFixture": "TEST FIXTURE - well-formed JSON with missing or empty required fields.",
+  "manifestVersion": "p3b-provisional-0",
+  "tools": [
+    {
+      "displayName": "Tool with no id",
+      "approvedVersions": [],
+      "remediation": { "method": "winget" }
+    }
+  ]
+}

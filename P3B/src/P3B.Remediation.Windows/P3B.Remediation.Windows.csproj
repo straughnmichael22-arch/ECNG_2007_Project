@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>P3B.Remediation.Windows</RootNamespace>
+    <!-- Needed by the LibraryImport source generator used for the environment-change broadcast. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\P3B.Remediation.Core\P3B.Remediation.Core.csproj" />
+  </ItemGroup>
+
+</Project>

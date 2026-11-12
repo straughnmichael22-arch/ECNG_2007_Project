@@ -1,0 +1,5 @@
+{
+  "_testFixture": "TEST FIXTURE - deliberately truncated JSON.",
+  "manifestVersion": "p3b-provisional-0",
+  "tools": [
+    { "id": "TEST-TOOL-A",
