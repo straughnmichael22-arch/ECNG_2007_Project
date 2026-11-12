@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="EDAEnvironmentManager.csproj" />
+  <Project Path="EDAEnvironmentManager.Audit/EDAEnvironmentManager.Audit.csproj" />
+</Solution>

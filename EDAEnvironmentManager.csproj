@@ -8,6 +8,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- The audit library is its own project; do not compile its files into the app as well. -->
+  <ItemGroup>
+    <Compile Remove="EDAEnvironmentManager.Audit\**" />
+    <None Remove="EDAEnvironmentManager.Audit\**" />
+    <ProjectReference Include="EDAEnvironmentManager.Audit\EDAEnvironmentManager.Audit.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Update="eda-tool-manifest.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
