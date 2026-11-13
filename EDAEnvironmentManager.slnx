@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="EDAEnvironmentManager.csproj" />
   <Project Path="EDAEnvironmentManager.Audit/EDAEnvironmentManager.Audit.csproj" />
+  <Project Path="EDAEnvironmentManager.Audit.Tests/EDAEnvironmentManager.Audit.Tests.csproj" />
 </Solution>
