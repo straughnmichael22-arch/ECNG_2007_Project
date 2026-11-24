@@ -2,7 +2,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace EDAEnvironmentAudit
+namespace EDAEnvironmentManager
 {
     internal static class Program
     {
