@@ -8,7 +8,7 @@
       "whereCommand": "code",
       "executable": "Code.exe",
       "minimumApprovedVersion": "1.100.0",
-      "maximumApprovedVersion": "1.145.2",
+      "maximumApprovedVersion": "",
       "expectedPaths": [
         "%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe",
         "%ProgramFiles%\\Microsoft VS Code\\Code.exe",
@@ -20,7 +20,18 @@
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": "--version"
+      "versionArguments": "--version",
+      "smokeTest": {
+        "enabled": true,
+        "method": "open-file",
+        "testFile": "smoke_test.vhd",
+        "requireUserConfirmation": true
+      },
+      "remediation": {
+        "method": "winget",
+        "packageId": "Microsoft.VisualStudioCode",
+        "version":  "1.146.0" 
+      }
     },
     {
       "name": "Vivado",
@@ -28,15 +39,37 @@
       "whereCommand": "vivado",
       "executable": "vivado.bat",
       "minimumApprovedVersion": "2019.2",
-      "maximumApprovedVersion": "2026.1.1",
+      "maximumApprovedVersion": "",
       "expectedPaths": [
         "C:\\Xilinx\\Vivado\\*\\bin\\vivado.bat",
         "C:\\AMD\\Vivado\\*\\bin\\vivado.bat",
-        "C:\\AMDDesignTools\\*\\Vivado\\bin\\vivado.bat"
+        "C:\\AMDDesignTools\\*\\Vivado\\bin\\vivado.bat",
+        "E:\\VivadoStuff\\2026.1\\Vivado\\bin\\vivado.bat"
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": "-version"
+      "versionArguments": "-version",
+      "smokeTest": {
+        "enabled": true,
+        "method": "batch-tcl",
+        "testFile": "vivado_smoke_test.tcl",
+        "expectedOutput": "VIVADO_SMOKE_TEST_PASSED",
+        "requireUserConfirmation": true
+      },
+      "remediation": {
+        "downloadUrl": "https://www.amd.com/en/support/downloads/adaptive-socs-and-fpgas/development-tools/2026-1.html",
+        "instructions": [
+          "Open the official AMD download page.",
+          "Locate the approved Vivado version.",
+          "Locate and select the AMD Unified Installer for Windows Self Extracting Web Installer.",
+          "Sign in to your AMD account or create one if prompted.",
+          "Enter the required information and accept any applicable terms.",
+          "Download and run the installer.",
+          "Follow the installation instructions and select Vivado Design Suite.",
+          "Complete the Vivado installation.",
+          "Run the environment audit again to verify the installation."
+        ]
+      }
     },
     {
       "name": "GHDL",
@@ -46,6 +79,7 @@
       "minimumApprovedVersion": "5.0.1",
       "maximumApprovedVersion": "6.0.0",
       "expectedPaths": [
+        "%LOCALAPPDATA%\\Microsoft\\WinGet\\Packages\\ghdl.*\\bin\\ghdl.exe",
         "%USERPROFILE%\\Downloads\\ghdl-*\\bin\\ghdl.exe",
         "%USERPROFILE%\\Downloads\\bin\\ghdl.exe",
         "%USERPROFILE%\\Desktop\\ghdl-*\\bin\\ghdl.exe",
@@ -55,7 +89,20 @@
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": "--version"
+      "versionArguments": "--version",
+      "smokeTest": {
+      "enabled": true,
+      "method": "analyze-elaborate-run",
+      "testFile": "smoke_test.vhd",
+      "entity": "smoke_test",
+      "standard": "08",
+      "source": "entity smoke_test is\nend entity smoke_test;\n\narchitecture test of smoke_test is\nbegin\n    process\n    begin\n        report \"GHDL simulation works!\";\n        wait;\n    end process;\nend architecture test;"
+},
+      "remediation": {
+        "method": "winget",
+        "packageId": "ghdl.ghdl.ucrt64.mcode",
+        "version": "6.0.0"
+      }
     },
     {
       "name": "Surfer",
@@ -74,7 +121,29 @@
       ],
       "searchRoots": [],
       "relativeExecutablePath": "",
-      "versionArguments": "--version"
+      "versionArguments": "--version",
+      "remediation": {
+        "downloadUrl": "https://surfer-project.org/",
+        "instructions": [
+          "Open the official Surfer website.",
+          "Download the pre-built Windows binary.",
+          "Extract the downloaded archive to a permanent folder.",
+          "Locate surfer.exe.",
+          "If SmartScreen appears, select More info → Run anyway if you trust the download.",
+          "Run the environment audit again."
+        ]
+      },
+      "smokeTest": {
+        "enabled": true,
+        "method": "open-waveform",
+        "testFile": "smoke_test.vcd",
+        "waveformFormat": "vcd",
+        "requireUserConfirmation": true,
+        "expectedSignals": [
+          "clk",
+          "data"
+        ]
+      }
     }
   ],
   "extensions": [
@@ -88,7 +157,19 @@
         "rjyoung.vscode-modern-vhdl-support",
         "vhdlwhiz.vhdl-by-vhdlwhiz"
       ],
-      "checkEnabled": true
+      "checkEnabled": true,
+      "smokeTest": {
+        "enabled": true,
+        "method": "open-vhdl-file",
+        "testFile": "extension_smoke_test.vhd",
+        "requireUserConfirmation": true,
+        "expectedLanguage": "vhdl",
+        "expectedExtensions": [
+          ".vhd",
+          ".vhdl"
+        ],
+        "requireGrammar": true
+      }
     }
   ]
 }
